@@ -1,0 +1,100 @@
+version: "3.8"
+
+services:
+  # Aplicación Spring Boot
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: franquicias-api
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=production
+      - DATABASE_URL=jdbc:mysql://mysql:3306/franquiciasdb?useSSL=false&allowPublicKeyRetrieval=true
+      - DATABASE_USERNAME=root
+      - DATABASE_PASSWORD=rootpassword
+      - SPRING_DATA_REDIS_HOST=redis
+      - SPRING_DATA_REDIS_PORT=6379
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    networks:
+      - franquicias-network
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://localhost:8080/actuator/health",
+        ]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 40s
+
+  # Base de datos MySQL
+  mysql:
+    image: mysql:8.0
+    container_name: franquicias-mysql
+    environment:
+      - MYSQL_ROOT_PASSWORD=rootpassword
+      - MYSQL_DATABASE=franquiciasdb
+      - MYSQL_USER=franquicias
+      - MYSQL_PASSWORD=franquicias123
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    networks:
+      - franquicias-network
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "mysqladmin",
+          "ping",
+          "-h",
+          "localhost",
+          "-u",
+          "root",
+          "-prootpassword",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Cache Redis
+  redis:
+    image: redis:7-alpine
+    container_name: franquicias-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - franquicias-network
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+networks:
+  franquicias-network:
+    driver: bridge
+
+volumes:
+  mysql-data:
+    driver: local
+  redis-data:
+    driver: local

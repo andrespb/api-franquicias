@@ -1,0 +1,35 @@
+version: "3.8"
+
+services:
+  # Solo MySQL y Redis para desarrollo local
+  # La aplicación se ejecuta con: mvn spring-boot:run
+
+  mysql:
+    image: mysql:8.0
+    container_name: franquicias-mysql-dev
+    environment:
+      - MYSQL_ROOT_PASSWORD=rootpassword
+      - MYSQL_DATABASE=franquiciasdb
+      - MYSQL_USER=franquicias
+      - MYSQL_PASSWORD=franquicias123
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-dev-data:/var/lib/mysql
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: franquicias-redis-dev
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-dev-data:/data
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+
+volumes:
+  mysql-dev-data:
+    driver: local
+  redis-dev-data:
+    driver: local
